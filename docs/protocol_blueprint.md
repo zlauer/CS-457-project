@@ -103,3 +103,9 @@ Player 1.
   "timestamp": 1727000000
 }
 ```
+
+# Wirestream Example
+```
+{"msg_type":"CONNECT","player_id":"Alice","timestamp":1727000000}\n
+{"msg_type":"MOVE","player_id":"Alice","payload":{"row":0,"col":2},"timestamp":1727000005}\n
+```
