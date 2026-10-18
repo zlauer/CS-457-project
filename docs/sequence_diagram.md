@@ -33,9 +33,9 @@ stateDiagram-v2
         Track hits and ships sunk.
         A miss leaves the score unchanged.
     end note
-    ```
+```
 
-Here is an updated version of the specification diagram featuring this one:
+Here is an updated version of the specification diagram featuring these movements:
 
 ```mermaid
 stateDiagram-v2
