@@ -5,7 +5,7 @@
   
   [ChatGPT](https://github.com/zlauer/CS-457-project/blob/main/docs/ai_prompts.md#chatgpt) prompts / chatlog
   
-  Other citations that I found along the way that I found to be helpful
+  [Other citations](https://github.com/zlauer/CS-457-project/edit/main/docs/ai_prompts.md#other-helpful-sources) that I found along the way that I found to be helpful
 
 ## Mermaid.ai
   I used mermaid.ai to create the finite state machine ([found under fsm_specification.md](https://github.com/zlauer/CS-457-project/blob/main/docs/fsm_specification.md))
@@ -467,3 +467,7 @@ The diagram describes this enforcement; your server code must implement it. Proc
   ## ChatGPT
 
   ChatGPT was used mainly for game production and building.  Logs will be posted and updated here.
+
+## Other helpful sources
+
+[GeeksforGeeks](https://www.geeksforgeeks.org/python/command-line-arguments-in-python/) help with argument flags and command-line arguments.
