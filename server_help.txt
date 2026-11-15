@@ -1,0 +1,8 @@
+
+
+=== SERVER HELP DOC ==
+    helpful commands!
+        -h: pulls this help document up
+        -p: listening port; can be initialized to 8080.
+
+

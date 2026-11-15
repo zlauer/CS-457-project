@@ -1,0 +1,5 @@
+=== BATTLESHIP HELP === 
+    helpful commands!
+        -h: help. brings this menu up.
+        -i: server DNS name. ex: server.lauer.edu
+        -p: server port number. insert this whenever you want to connect to the server.
