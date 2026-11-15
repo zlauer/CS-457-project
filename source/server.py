@@ -1,11 +1,11 @@
 import argparse  ## assignment requirement!
-import sys
+# import sys
 import socket
 import selectors
 
 ## commands:
 ## python3 server.py -h
-## python3 server.py -p PORT
+## python3 server.py -p PORTp
 
 # pulls up server_help.txt
 with open("server_help.txt", "r") as file:
@@ -42,12 +42,6 @@ selector.register(
 )
 
 #event loop
-while True:
-    events = selector.select()
-
-    for key, mask in events:
-        if key.fileobj is server_socket:
-            client_socket, client_address = server_socket.accept()
             
 while True:
     events = selector.select()
