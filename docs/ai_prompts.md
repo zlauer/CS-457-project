@@ -463,4 +463,7 @@ After a valid, non-winning shot, SwitchToP2 / SwitchToP1 changes the active play
 Non-blocking I/O does not bypass these checks. The network layer can receive messages from either computer at any time, but it must dispatch them to the currently active turn’s validator. For example, a Computer 2 shot received during Player1Turn goes through ValidateP1Shot and is rejected.
 
 The diagram describes this enforcement; your server code must implement it. Processing game events one at a time per match keeps validation, board/score updates, and turn switching from overlapping. For stronger protection against delayed or duplicate requests, include a turn ID and request ID in each shot request.
-  
+
+  ## ChatGPT
+
+  ChatGPT was used mainly for game production and building.  Logs will be posted and updated here.
