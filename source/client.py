@@ -11,7 +11,7 @@ try:
     arguments, values = getopt.getopt(args, options)
     for currentArg, currentVal in arguments:
         if currentArg in ("-h"):
-            with open("help.txt", "r") as file:
+            with open("client_help.txt", "r") as file:
                 print(file.read())
         elif currentArg in ("-i"):
             print("server dns name")
