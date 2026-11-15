@@ -1,9 +1,9 @@
 # AI Prompts
   This is a page specifying AI chatlogs for documentation on where and how I created components of this project.
   
-  Mermaid.ai prompts / chatlog
+  [Mermaid.ai](https://github.com/zlauer/CS-457-project/blob/main/docs/ai_prompts.md#mermaidai) prompts / chatlog
   
-  Chatgpt prompts / chatlog
+  [ChatGPT](https://github.com/zlauer/CS-457-project/blob/main/docs/ai_prompts.md#chatgpt) prompts / chatlog
   
   Other citations that I found along the way that I found to be helpful
 
