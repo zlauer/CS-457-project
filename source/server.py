@@ -2,10 +2,36 @@ import argparse  ## assignment requirement!
 # import sys
 import socket
 import selectors
+import json
 
 ## commands:
 ## python3 server.py -h
 ## python3 server.py -p PORTp
+
+#player assigning and recognition
+players = {
+    # this will not be populated until a player exists, however
+    
+}
+
+#messages
+lobby_message = {
+    "msg_type": "CONNECT",
+    "player_id": 1,
+    "payload": {
+        "message": "Connected! Waiting for another player."
+    },
+    "timestamp": "2026-11-15T17:30:00"
+}
+
+lobby_message = {
+    "msg_type": "LOBBY_WAIT",
+    "player_id": 1,
+    "payload": {
+        "message": "Connected! Waiting for another player."
+    },
+    "timestamp": "2026-11-15T17:30:00"
+}
 
 # pulls up server_help.txt
 with open("server_help.txt", "r") as file:
@@ -57,7 +83,77 @@ while True:
             selector.register(
                 client_socket,
                 selectors.EVENT_READ,
-                data=None
+                data={
+                    "input_buffer": bytearray(),
+                    "output_buffer": bytearray(),
+                    "player_id": None
+}
             )
 
             print(f"New connection from {client_address}")
+            
+        else:
+            client_socket = key.fileobj
+            client_data = key.data
+
+            try:
+                data = client_socket.recv(1024)
+            except BlockingIOError:
+                continue
+
+            if not data:
+                print("Client disconnected.")
+                selector.unregister(client_socket)
+                client_socket.close()
+                continue
+
+            # Add incoming bytes to this client's buffer
+            input_buffer = client_data["input_buffer"]
+            input_buffer.extend(data)
+
+            # Process every complete message in the buffer
+            while b"\n" in input_buffer:
+                newline_index = input_buffer.index(b"\n")
+
+                raw_message = input_buffer[:newline_index]
+
+                # Remove the processed message and its newline
+                del input_buffer[:newline_index + 1]
+
+                try:
+                    message = json.loads(raw_message.decode("utf-8"))
+
+                    if not isinstance(message, dict):
+                        print("Invalid message format.")
+
+                    elif message.get("msg_type") == "CONNECT":
+
+                        # Prevent the same connection from registering twice
+                        if client_data["player_id"] is not None:
+                            print("This client is already registered.")
+
+                        else:
+                            # Find an available player slot
+                            player_id = next(
+                                (pid for pid in (1, 2) if pid not in players),
+                                None
+                            )
+
+                            if player_id is None:
+                                print("Lobby is full.")
+
+                            else:
+                                # Register the player
+                                players[player_id] = client_socket
+                                client_data["player_id"] = player_id
+
+                                print(f"Player {player_id} connected.")
+
+                                if len(players) == 1:
+                                    print("Waiting for another player...")
+
+                                elif len(players) == 2:
+                                    print("Both players connected!")
+
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    print("Received an invalid JSON message.")
