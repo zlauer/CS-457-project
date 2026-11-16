@@ -14,24 +14,6 @@ players = {
     
 }
 
-#messages
-lobby_message = {
-    "msg_type": "CONNECT",
-    "player_id": 1,
-    "payload": {
-        "message": "Connected! Waiting for another player."
-    },
-    "timestamp": "2026-11-15T17:30:00"
-}
-
-lobby_message = {
-    "msg_type": "LOBBY_WAIT",
-    "player_id": 1,
-    "payload": {
-        "message": "Connected! Waiting for another player."
-    },
-    "timestamp": "2026-11-15T17:30:00"
-}
 
 # pulls up server_help.txt
 with open("server_help.txt", "r") as file:
@@ -67,6 +49,22 @@ selector.register(
     data=None
 )
 
+# helper function - designed to queue outgoing messages
+def queue_message(client_socket, client_data, message):
+
+    # Convert dictionary into newline-delimited JSON bytes
+    message_bytes = json.dumps(message).encode("utf-8") + b"\n"
+
+    # Add message to the client's output buffer
+    client_data["output_buffer"].extend(message_bytes)
+
+    # Tell the selector this socket is ready to send data
+    selector.modify(
+        client_socket,
+        selectors.EVENT_READ | selectors.EVENT_WRITE,
+        data=client_data
+    )
+
 #event loop
             
 while True:
@@ -92,68 +90,118 @@ while True:
 
             print(f"New connection from {client_address}")
             
+
         else:
             client_socket = key.fileobj
             client_data = key.data
 
-            try:
-                data = client_socket.recv(1024)
-            except BlockingIOError:
-                continue
-
-            if not data:
-                print("Client disconnected.")
-                selector.unregister(client_socket)
-                client_socket.close()
-                continue
-
-            # Add incoming bytes to this client's buffer
-            input_buffer = client_data["input_buffer"]
-            input_buffer.extend(data)
-
-            # Process every complete message in the buffer
-            while b"\n" in input_buffer:
-                newline_index = input_buffer.index(b"\n")
-
-                raw_message = input_buffer[:newline_index]
-
-                # Remove the processed message and its newline
-                del input_buffer[:newline_index + 1]
+            # HANDLE INCOMING MESSAGES
+            if mask & selectors.EVENT_READ:
 
                 try:
-                    message = json.loads(raw_message.decode("utf-8"))
+                    data = client_socket.recv(1024)
+                except BlockingIOError:
+                    data = None
 
-                    if not isinstance(message, dict):
-                        print("Invalid message format.")
+                if data == b"":
+                    print("Client disconnected.")
 
-                    elif message.get("msg_type") == "CONNECT":
+                    player_id = client_data["player_id"]
 
-                        # Prevent the same connection from registering twice
-                        if client_data["player_id"] is not None:
-                            print("This client is already registered.")
+                    if player_id is not None:
+                        players.pop(player_id, None)
 
-                        else:
-                            # Find an available player slot
-                            player_id = next(
-                                (pid for pid in (1, 2) if pid not in players),
-                                None
-                            )
+                    selector.unregister(client_socket)
+                    client_socket.close()
+                    continue
 
-                            if player_id is None:
-                                print("Lobby is full.")
+                elif data is not None:
 
-                            else:
-                                # Register the player
-                                players[player_id] = client_socket
-                                client_data["player_id"] = player_id
+                    # Add incoming bytes to this client's buffer
+                    input_buffer = client_data["input_buffer"]
+                    input_buffer.extend(data)
 
-                                print(f"Player {player_id} connected.")
+                    # Process every complete message in the buffer
+                    while b"\n" in input_buffer:
+                        newline_index = input_buffer.index(b"\n")
 
-                                if len(players) == 1:
-                                    print("Waiting for another player...")
+                        raw_message = input_buffer[:newline_index]
 
-                                elif len(players) == 2:
-                                    print("Both players connected!")
+                        # Remove the processed message and its newline
+                        del input_buffer[:newline_index + 1]
 
-                except (UnicodeDecodeError, json.JSONDecodeError):
-                    print("Received an invalid JSON message.")
+                        try:
+                            message = json.loads(raw_message.decode("utf-8"))
+
+                            print("Received message:", message)
+
+                            if not isinstance(message, dict):
+                                print("Invalid message format.")
+
+                            elif message.get("msg_type") == "CONNECT":
+
+                                # Prevent the same connection from registering twice
+                                if client_data["player_id"] is not None:
+                                    print("This client is already registered.")
+
+                                else:
+                                    # Find an available player slot
+                                    player_id = next(
+                                        (pid for pid in (1, 2) if pid not in players),
+                                        None
+                                    )
+
+                                    if player_id is None:
+                                        print("Lobby is full.")
+
+                                    else:
+                                        # Register the player
+                                        players[player_id] = client_socket
+                                        client_data["player_id"] = player_id
+
+                                        queue_message(
+                                            client_socket,
+                                            client_data,
+                                            {
+                                                "msg_type": "TEST_RESPONSE",
+                                                "payload": {
+                                                    "message": "Successfully connected to server!",
+                                                    "player_id": player_id
+                                                }
+                                            }
+                                        )
+
+                                        print(f"Player {player_id} connected.")
+
+                                        if len(players) == 1:
+                                            print("Waiting for another player...")
+
+                                        elif len(players) == 2:
+                                            print("Both players connected!")
+
+                        except (UnicodeDecodeError, json.JSONDecodeError):
+                            print("Received an invalid JSON message.")
+
+            # HANDLE OUTGOING MESSAGES
+            if mask & selectors.EVENT_WRITE:
+
+                output_buffer = client_data["output_buffer"]
+
+                if output_buffer:
+
+                    try:
+                        sent = client_socket.send(output_buffer)
+                    except BlockingIOError:
+                        sent = 0
+
+                    if sent > 0:
+                        # Remove successfully transmitted bytes
+                        del output_buffer[:sent]
+
+                # Disable write monitoring when buffer is empty
+                if not output_buffer:
+                    selector.modify(
+                        client_socket,
+                        selectors.EVENT_READ,
+                        data=client_data
+                    )
