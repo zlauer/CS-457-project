@@ -159,17 +159,17 @@ while True:
                                         players[player_id] = client_socket
                                         client_data["player_id"] = player_id
 
-                                        queue_message(
-                                            client_socket,
-                                            client_data,
-                                            {
-                                                "msg_type": "TEST_RESPONSE",
-                                                "payload": {
-                                                    "message": "Successfully connected to server!",
-                                                    "player_id": player_id
-                                                }
-                                            }
-                                        )
+                                        # queue_message(
+                                        #     client_socket,
+                                        #     client_data,
+                                        #     {
+                                        #         "msg_type": "TEST_RESPONSE",
+                                        #         "payload": {
+                                        #             "message": "Successfully connected to server!",
+                                        #             "player_id": player_id
+                                        #         }
+                                        #     }
+                                        # )
 
                                         print(f"Player {player_id} connected.")
 
