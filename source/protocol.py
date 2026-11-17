@@ -197,8 +197,37 @@ def validate_fleet(ship_list):
 # Board rendering
 # ---------------------------------------------------------------------
 
-def render_board(board):
-    print("   A B C D E F G H I J")
+def render_board(
+    ship_cells=None,
+    hit_cells=None,
+    miss_cells=None,
+    reveal_ships=True
+):
+    """Build and return a printable 10x10 Battleship board."""
+
+    # Start with every cell marked as unknown.
+    board = [["~" for _ in range(BOARD_SIZE)]
+             for _ in range(BOARD_SIZE)]
+
+    # Only reveal ships on the player's own board.
+    if reveal_ships:
+        for row, column in ship_cells or []:
+            board[row][column] = "S"
+
+    # Show successful shots.
+    for row, column in hit_cells or []:
+        board[row][column] = "X"
+
+    # Show missed shots.
+    for row, column in miss_cells or []:
+        board[row][column] = "o"
+
+    # Build the board as text so the client can print it.
+    lines = ["   A B C D E F G H I J"]
 
     for row_index, row in enumerate(board):
-        print(f"{row_index + 1:2} " + " ".join(row))
+        lines.append(
+            f"{row_index + 1:2} " + " ".join(row)
+        )
+
+    return "\n".join(lines)

@@ -614,6 +614,10 @@ def close_client(client_socket, notify_opponent=True):
         client_socket.close()
         return
 
+    if client_data is None:
+        print("Warning: Connection has no associated client data.")
+        return
+
     player_id = client_data["player_id"]
 
     try:
@@ -844,6 +848,7 @@ def accept_connection(server_socket):
 
     client_data = {
         "address": client_address,
+        "socket": client_socket,
         "player_id": None,
         "name": None,
         "input_buffer": b"",
