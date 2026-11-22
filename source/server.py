@@ -27,6 +27,7 @@ from protocol import (
     decode_message,
     validate_fleet,
     format_coordinate,
+    validate_client_message,
 )
 
 
@@ -56,12 +57,7 @@ last_move = None
 # ---------------------------------------------------------------------
 
 def queue_message(client_socket, client_data, message):
-    """
-    Add a message to a client's output buffer.
-
-    The message is not necessarily sent immediately. The selector
-    will notify us when the socket is ready for writing.
-    """
+    """Add a message to a client's output buffer."""
 
     encoded = encode_message(message)
     client_data["output_buffer"] += encoded
@@ -110,10 +106,7 @@ def broadcast_message(msg_type, payload=None):
 # ---------------------------------------------------------------------
 
 def serialize_cells(cells):
-    """
-    Convert a collection of (row, column) tuples into JSON-friendly
-    lists of [row, column].
-    """
+    """Convert (row, column) tuples into JSON-friendly lists."""
 
     return [
         [row, column]
@@ -122,11 +115,7 @@ def serialize_cells(cells):
 
 
 def get_player_board(player_id):
-    """
-    Build the player's own board information.
-
-    This board can show their own ships and incoming shots.
-    """
+    """Build the player's own board information."""
 
     player = players[player_id]
 
@@ -153,13 +142,7 @@ def get_player_board(player_id):
 
 
 def get_opponent_board(player_id):
-    """
-    Build the player's view of the opponent's board.
-
-    IMPORTANT:
-    This deliberately does not include the opponent's ship cells.
-    Only the current player's own shots are visible.
-    """
+    """Build a hidden view of the opponent's board."""
 
     player = players[player_id]
 
@@ -172,12 +155,7 @@ def get_opponent_board(player_id):
 
 
 def send_state_update():
-    """
-    Send a personalized state update to each connected player.
-
-    Each player receives their own board and a hidden view of the
-    opponent's board.
-    """
+    """Send personalized state updates to connected players."""
 
     for player_id, player in list(players.items()):
 
@@ -223,12 +201,7 @@ def send_state_update():
 # ---------------------------------------------------------------------
 
 def handle_connect(client_socket, client_data, message):
-    """
-    Register a new player.
-
-    The server assigns the player ID. It does not trust a player ID
-    supplied by the client.
-    """
+    """Register a new player and assign their server-side ID."""
 
     if client_data["player_id"] is not None:
         send_to_client_error(
@@ -295,12 +268,11 @@ def handle_connect(client_socket, client_data, message):
             },
         )
 
-        # Send personalized state updates after the shared lobby notice.
         send_state_update()
 
 
 def send_to_client_error(client_socket, client_data, error_text):
-    """Send an ERROR message to a client, including an unregistered one."""
+    """Send an ERROR message, including to an unregistered client."""
 
     player_id = client_data["player_id"]
 
@@ -318,12 +290,7 @@ def send_to_client_error(client_socket, client_data, error_text):
 # ---------------------------------------------------------------------
 
 def handle_place_ships(player_id, message):
-    """
-    Validate and save one complete fleet placement.
-
-    The client sends all five ships in one PLACE_SHIPS message.
-    The server independently validates the entire fleet.
-    """
+    """Validate and save a complete fleet placement."""
 
     player = players.get(player_id)
 
@@ -376,7 +343,7 @@ def handle_place_ships(player_id, message):
         },
     )
 
-    # The game begins only when both fleets have been accepted.
+    # Begin only after both fleets have been accepted.
     if len(players) == 2 and all(
         player_data["ready"]
         for player_data in players.values()
@@ -413,17 +380,7 @@ def start_game():
 # ---------------------------------------------------------------------
 
 def handle_move(player_id, message):
-    """
-    Process one shot.
-
-    MOVE payload format:
-        {
-            "row": 0,
-            "col": 0
-        }
-
-    Coordinates are zero-based integers.
-    """
+    """Process one shot from the active player."""
 
     global active_player
     global last_move
@@ -499,7 +456,6 @@ def handle_move(player_id, message):
         )
         return
 
-    # Record the shot before resolving its result.
     player["shots"].add(target)
 
     opponent_ship_cells = set()
@@ -510,12 +466,15 @@ def handle_move(player_id, message):
     if target in opponent_ship_cells:
         player["hits"].add(target)
         result = "HIT"
+
         print(
             f"Player {player_id} hit "
             f"{format_coordinate(row, column)}."
         )
+
     else:
         result = "MISS"
+
         print(
             f"Player {player_id} missed "
             f"{format_coordinate(row, column)}."
@@ -537,10 +496,9 @@ def handle_move(player_id, message):
         "sunk_ship": sunk_ship,
     }
 
-    # Each valid shot changes the turn, whether it hits or misses.
+    # Every valid shot changes the turn.
     active_player = opponent_id
 
-    # Five ships occupy 17 cells in total.
     total_ship_cells = sum(FLEET.values())
 
     if len(player["hits"]) == total_ship_cells:
@@ -598,34 +556,32 @@ def finish_game(winner_id, reason):
 # ---------------------------------------------------------------------
 
 def close_client(client_socket, notify_opponent=True):
-    """
-    Unregister and close a client socket.
-
-    If a player disconnects during an active game, the remaining
-    player wins by forfeit.
-    """
+    """Unregister and close a client socket."""
 
     global game_over
     global active_player
 
     try:
         client_data = selector.get_key(client_socket).data
-    except KeyError:
+
+    except (KeyError, ValueError, OSError):
+        # The socket may already be closed or unregistered.
         client_socket.close()
         return
+
+    try:
+        selector.unregister(client_socket)
+
+    except (KeyError, ValueError, OSError):
+        pass
+
+    client_socket.close()
 
     if client_data is None:
         print("Warning: Connection has no associated client data.")
         return
 
     player_id = client_data["player_id"]
-
-    try:
-        selector.unregister(client_socket)
-    except (KeyError, ValueError):
-        pass
-
-    client_socket.close()
 
     if player_id is None:
         return
@@ -664,9 +620,7 @@ def close_client(client_socket, notify_opponent=True):
             },
         )
 
-        print(
-            f"Player {opponent_id} wins by forfeit."
-        )
+        print(f"Player {opponent_id} wins by forfeit.")
 
     else:
         send_to_player(
@@ -683,13 +637,15 @@ def close_client(client_socket, notify_opponent=True):
 # ---------------------------------------------------------------------
 
 def process_message(client_socket, client_data, message):
-    """Route a received protocol message to the correct handler."""
+    """Validate and route an incoming protocol message."""
 
-    if not isinstance(message, dict):
+    is_valid, error_message = validate_client_message(message)
+
+    if not is_valid:
         send_to_client_error(
             client_socket,
             client_data,
-            "Invalid message format.",
+            error_message,
         )
         return
 
@@ -728,14 +684,118 @@ def process_message(client_socket, client_data, message):
         )
 
 
-def read_client(client_socket, client_data):
-    """
-    Read incoming bytes and process complete newline-delimited messages.
 
-    TCP does not preserve message boundaries. One recv() can contain
-    part of a message, one message, or several messages. The input
-    buffer handles all three cases.
+def close_client(client_socket, notify_opponent=True):
     """
+    Unregister and close a client socket.
+
+    If a player disconnects during an active game, the remaining
+    player wins by forfeit.
+    """
+
+    global game_over
+    global active_player
+
+    # Retrieve the client's information before closing the socket.
+    try:
+        client_data = selector.get_key(client_socket).data
+
+    except (KeyError, ValueError, OSError):
+        # The socket may already have been unregistered or closed.
+        client_socket.close()
+        return
+
+    # Make sure this is an actual client connection.
+    if client_data is None:
+        print("Warning: Connection has no associated client data.")
+
+        try:
+            selector.unregister(client_socket)
+        except (KeyError, ValueError, OSError):
+            pass
+
+        client_socket.close()
+        return
+
+    player_id = client_data["player_id"]
+
+    # Unregister the socket before closing it.
+    try:
+        selector.unregister(client_socket)
+
+    except (KeyError, ValueError, OSError):
+        pass
+
+    # Close the socket.
+    client_socket.close()
+
+    # A connection that hasn't joined the game has no player ID.
+    if player_id is None:
+        return
+
+    # Remove the disconnected player from the active player list.
+    player = players.pop(player_id, None)
+
+    if player is None:
+        return
+
+    player["connected"] = False
+
+    print(
+        f"{player['name']} (Player {player_id}) disconnected."
+    )
+
+    # Don't notify the opponent during server shutdown.
+    if not notify_opponent:
+        return
+
+    opponent_id = 2 if player_id == 1 else 1
+    opponent = players.get(opponent_id)
+
+    if opponent is None:
+        return
+
+    # If a player disconnects during an active game,
+    # the remaining player wins by forfeit.
+    if game_started and not game_over:
+
+        game_over = True
+        active_player = None
+
+        send_to_player(
+            opponent_id,
+            "GAME_OVER",
+            {
+                "winner_id": opponent_id,
+                "winner_name": opponent["name"],
+                "reason": (
+                    "Your opponent disconnected. "
+                    "You win by forfeit."
+                ),
+            },
+        )
+
+        print(
+            f"Player {opponent_id} wins by forfeit."
+        )
+
+    else:
+        # If the game hasn't started, notify the remaining player
+        # that another player is needed.
+        send_to_player(
+            opponent_id,
+            "LOBBY_WAIT",
+            {
+                "message": (
+                    "The other player disconnected. "
+                    "Waiting for another player."
+                )
+            },
+        )
+
+
+def read_client(client_socket, client_data):
+    """Receive and process incoming messages from a client."""
 
     try:
         received_data = client_socket.recv(4096)
@@ -747,12 +807,14 @@ def read_client(client_socket, client_data):
         close_client(client_socket)
         return
 
+    # An empty read means the client disconnected.
     if not received_data:
         close_client(client_socket)
         return
 
     client_data["input_buffer"] += received_data
 
+    # Process complete newline-delimited messages.
     while b"\n" in client_data["input_buffer"]:
 
         raw_message, client_data["input_buffer"] = (
@@ -779,8 +841,11 @@ def read_client(client_socket, client_data):
             message,
         )
 
-        # A DISCONNECT message may have closed this socket.
-        if client_socket not in selector.get_map():
+        # The message may have caused the socket to close.
+        try:
+            selector.get_key(client_socket)
+
+        except (KeyError, ValueError, OSError):
             return
 
         if client_data["close_after_write"]:
@@ -792,7 +857,7 @@ def read_client(client_socket, client_data):
 # ---------------------------------------------------------------------
 
 def write_client(client_socket, client_data):
-    """Send as much buffered output as the socket will accept."""
+    """Send buffered output when the socket is ready."""
 
     output_buffer = client_data["output_buffer"]
 
@@ -820,13 +885,14 @@ def write_client(client_socket, client_data):
             )
             return
 
-        # No pending output remains, so we only need read events.
+        # No pending output remains; listen only for incoming data.
         try:
             selector.modify(
                 client_socket,
                 selectors.EVENT_READ,
                 client_data,
             )
+
         except (KeyError, ValueError, OSError):
             close_client(client_socket)
 
@@ -870,6 +936,7 @@ def accept_connection(server_socket):
     print(f"New connection from {client_address}.")
 
 
+
 # ---------------------------------------------------------------------
 # Main server loop
 # ---------------------------------------------------------------------
@@ -910,7 +977,7 @@ def start_server(host, port):
 
                 current_socket = key.fileobj
 
-                # The listening socket is ready to accept connections.
+                # Handle new incoming connections.
                 if current_socket is server_socket:
                     accept_connection(server_socket)
                     continue
@@ -923,8 +990,10 @@ def start_server(host, port):
                         client_data,
                     )
 
-                # A read event may have closed the socket.
-                if current_socket not in selector.get_map():
+                # A read event may have closed or unregistered the socket.
+                try:
+                    selector.get_key(current_socket)
+                except (KeyError, ValueError, OSError):
                     continue
 
                 if mask & selectors.EVENT_WRITE:
@@ -937,13 +1006,21 @@ def start_server(host, port):
         print("\nServer shutting down.")
 
     finally:
-        # Close every connected client.
-        for client_socket in list(selector.get_map()):
+        # Iterate over SelectorKey values, not integer file descriptors.
+        for selector_key in list(selector.get_map().values()):
+
+            client_socket = selector_key.fileobj
+
             if client_socket is not server_socket:
                 close_client(
                     client_socket,
                     notify_opponent=False,
                 )
+
+        try:
+            selector.unregister(server_socket)
+        except (KeyError, ValueError, OSError):
+            pass
 
         selector.close()
         server_socket.close()
