@@ -2,6 +2,6 @@ Comprehensive verification report including topology screenshot with custom node
 
 ###  Annotated Wireshark DNS Exchange.
 
-![annotated wireshark image](sprint-4-deliverables/annoated wireshark screenshot(1).png)
+![Annotated Wireshark Screenshot](sprint-4-deliverables/annoated%20wireshark%20screenshot(1).png)
 ![]()
 ![]()
