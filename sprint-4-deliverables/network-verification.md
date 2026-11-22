@@ -3,5 +3,5 @@ Comprehensive verification report including topology screenshot with custom node
 ###  Annotated Wireshark DNS Exchange.
 
 ![Annotated Wireshark Screenshot](https://github.com/zlauer/CS-457-project/blob/main/sprint-4-deliverables/annoated%20wireshark%20screenshot(1).png?raw=true)
-![]()
-![]()
+![Standard query notation](https://github.com/zlauer/CS-457-project/blob/main/sprint-4-deliverables/standard%20query%20UDP.png?raw=true)
+![Query response](https://github.com/zlauer/CS-457-project/blob/main/sprint-4-deliverables/query%20response%20UDP.png?raw=true)
