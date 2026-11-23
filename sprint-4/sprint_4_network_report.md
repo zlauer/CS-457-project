@@ -29,4 +29,9 @@ as well as pinging each client.
 ### Wireshark DNS output
 Here are each of the DNS protocols that were thrown.
 
-![dns wireshark](https://github.com/zlauer/CS-457-project/blob/main/sprint-4/images/dns%20protocol%20wireshark.png?raw=true)
+![wireshark](https://github.com/zlauer/CS-457-project/blob/main/sprint-4/images/dns%20protocol%20wireshark.png?raw=true)
+**this** is a screenshot from sprint_4_packet_capture.pcap.
+
+
+![dns wireshark](https://github.com/zlauer/CS-457-project/blob/main/sprint-4/images/dns%20server%20lookup.png?raw=true)
+**this** is a screenshot from sprint_4_dns_lookup when using the command nslookup -type=A server.[yourlastname].edu.
